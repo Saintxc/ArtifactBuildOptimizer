@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         # Window setup
-        self.setWindowTitle("Artifact Build Optimizer - PoC")
+        self.setWindowTitle("Artifact Build Optimizer")
         self.setFixedSize(1600, 900)
 
         # PDA background image
