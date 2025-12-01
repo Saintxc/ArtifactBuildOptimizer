@@ -86,9 +86,10 @@ class MainWindow(QMainWindow):
 
         for armor in data["armor"]:
             name = armor["name"]
-            slots = armor["slots"]
-            containers = armor["max_lead_containers"]
-            display_text = f"{name}  |  Slots: {slots}  |  Lead Containers: {containers}"
+            slots = armor["slots_base"]
+            pos_slots = armor["slots_total"]
+            containers = armor["lead_containers_total"]
+            display_text = f"{name}  |  Base Slots: {slots} - Possible Slots: {pos_slots}  |  Possible Lead Containers: {containers}"
             self.armor_list.addItem(display_text)
 
 
