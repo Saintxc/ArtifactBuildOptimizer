@@ -1,5 +1,6 @@
 import requests
 
+
 # GitHub Data URL
 BASE_URL = "https://raw.githubusercontent.com/Saintxc/ArtifactBuildOptimizerData/main/"
 
