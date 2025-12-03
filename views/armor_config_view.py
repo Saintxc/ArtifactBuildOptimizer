@@ -2,6 +2,7 @@ from typing import Dict, Optional
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtWidgets import (QWidget,  QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QFrame)
 from utils.image_loader import load_pixmap_from_url
+from utils.stats import armor_resist_bars
 
 
 class ArmorConfigView(QWidget):
@@ -18,6 +19,8 @@ class ArmorConfigView(QWidget):
 
         self._lead_base = int(armor.get("lead_containers_base", 0))
         self._lead_total = int(armor.get("lead_containers_total", self._lead_base))
+
+        self._base_bar_values = armor_resist_bars(armor)
 
         self._build_ui()
 
@@ -162,6 +165,35 @@ class ArmorConfigView(QWidget):
         lead_row.addStretch(1)
         controls_col.addLayout(lead_row)
 
+        # Base resistance bars
+        res_title = QLabel("Base Resistances (No Upgrades)")
+        res_title.setStyleSheet("color: white; font-size: 24px; font-weight: bold; text-decoration: underline;")
+        controls_col.addWidget(res_title)
+        stat_order = [
+            ("thermal", "Thermal"),
+            ("electrical", "Electrical"),
+            ("chemical", "Chemical"),
+            ("radiation", "Radiation"),
+            ("psi", "Psi"),
+            ("physical", "Physical"),
+        ]
+
+        for key, label_text in stat_order:
+            bars = self._base_bar_values.get(key, 0)
+
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            row.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+            stat_label = QLabel(f"{label_text}:")
+            stat_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+            row.addWidget(stat_label)
+
+            row.addLayout(self._create_bar_row(bars))
+            row.addStretch(1)
+
+            controls_col.addLayout(row)
+
         # Centered vertically
         controls_col.addStretch(2)
         content_row.addLayout(controls_col, stretch=1)
@@ -208,6 +240,22 @@ class ArmorConfigView(QWidget):
         bottom_bar.addWidget(next_btn)
 
         root_layout.addLayout(bottom_bar)
+
+    def _create_bar_row(self, filled_count: int):
+        # Create one horizontal resistance bar row
+        layout = QHBoxLayout()
+        layout.setSpacing(4)
+
+        for i in range(5):
+            bar = QFrame()
+            bar.setFixedSize(22, 10)
+            color = "#2ecc71" if i < filled_count else "rgba(255, 255, 255, 40)"
+            bar.setStyleSheet(
+                f"background-color: {color}; border-radius: 3px;"
+            )
+            layout.addWidget(bar)
+
+        return layout
 
     def _on_back_clicked(self):
         # Emit back navigation
