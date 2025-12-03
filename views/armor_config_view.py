@@ -58,7 +58,7 @@ class ArmorConfigView(QWidget):
         armor_card_layout.setContentsMargins(16, 16, 16, 16)
         armor_card_layout.setSpacing(12)
         armor_card_layout.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignHCenter
         )
 
         img_label = QLabel()
