@@ -114,7 +114,7 @@ class ArmorConfigView(QWidget):
         for val in range(self._slots_base, self._slots_total + 1):
             self.slots_combo.addItem(str(val), val)
 
-        idx = self.slots_combo.findData(self._slots_total)
+        idx = self.slots_combo.findData(self._slots_base)
         if idx >= 0:
             self.slots_combo.setCurrentIndex(idx)
 
@@ -154,7 +154,7 @@ class ArmorConfigView(QWidget):
         for val in range(self._lead_base, self._lead_total + 1):
             self.lead_combo.addItem(str(val), val)
 
-        idx = self.lead_combo.findData(self._lead_total)
+        idx = self.lead_combo.findData(self._lead_base)
         if idx >= 0:
             self.lead_combo.setCurrentIndex(idx)
 
