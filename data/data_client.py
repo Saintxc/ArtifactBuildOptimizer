@@ -32,7 +32,7 @@ def load_armor_data():
 
 def load_artifact_data():
     # Return list of artifacts with images
-    artifacts = _fetch_json(ARTIFACT_JSON_URL, "artifact")
+    artifacts = _fetch_json(ARTIFACT_JSON_URL, "artifacts")
     for art in artifacts:
         rel_path = art.get("image", "")
         if rel_path:

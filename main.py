@@ -3,7 +3,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QStackedWidget)
-from data.data_client import load_armor_data
+from data.data_client import load_armor_data, load_artifact_data
 from views.armor_selection_view import ArmorSelectionView
 from views.armor_config_view import ArmorConfigView
 from views.artifact_selection_view import ArtifactSelectionView
@@ -38,11 +38,12 @@ class MainWindow(QMainWindow):
 
         # Load data
         armors = load_armor_data()
+        artifacts = load_artifact_data()
 
         # Views we have from the start
         self.armor_selection_view = ArmorSelectionView(armors)
         self.armor_config_view: ArmorConfigView | None = None
-        self.artifact_selection_view = ArtifactSelectionView()
+        self.artifact_selection_view = ArtifactSelectionView(artifacts)
         self.build_results_view = BuildResultsView()
 
         # Add the views to the stack
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
 
         # Wire signals
         self.armor_selection_view.next_requested.connect(self._on_armor_chosen)
+        self.artifact_selection_view.back_requested.connect(self._show_armor_config)
 
     # Background
     def _setup_background(self):
@@ -86,10 +88,16 @@ class MainWindow(QMainWindow):
         # Back button on config sends you back to armor selection
         self.stack.setCurrentWidget(self.armor_selection_view)
 
+    def _show_armor_config(self):
+        # Back button on artifacts sends you back to config
+        if self.armor_config_view is not None:
+            self.stack.setCurrentWidget(self.armor_config_view)
+
     def _on_armor_config_done(self, armor_config: dict):
         armor = armor_config["armor"]
         slots = armor_config["slots_selected"]
         containers = armor_config["lead_containers_selected"]
+        self.artifact_selection_view.set_context(armor, slots, containers)
         self.stack.setCurrentWidget(self.artifact_selection_view)
 
 
