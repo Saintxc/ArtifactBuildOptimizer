@@ -39,10 +39,25 @@ def armor_resistances(armor: Dict) -> Dict[str, int]:
     return {k: int(v) for k, v in res.items()}
 
 
-def armor_resist_bars(armor: Dict) -> Dict[str, int]:
-    # Return resistance bar counts for an armor.
-    res = armor_resistances(armor)
-    return {name: value_to_bars(val) for name, val in res.items()}
+def armor_resist_bars(armor: dict) -> dict:
+    res = armor.get("resistances", {})
+    bars = {}
+
+    for key, value in res.items():
+        full = value // 20
+        leftover = value % 20
+        half = 1 if leftover >= 10 else 0
+
+        total_slots = 5
+        empty = total_slots - full - half
+
+        bars[key] = {
+            "full": full,
+            "half": half,
+            "empty": empty,
+        }
+
+    return bars
 
 
 def apply_artifact_resists(base_resists: Dict[str, int],

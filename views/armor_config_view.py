@@ -241,19 +241,42 @@ class ArmorConfigView(QWidget):
 
         root_layout.addLayout(bottom_bar)
 
-    def _create_bar_row(self, filled_count: int):
-        # Create one horizontal resistance bar row
+    def _create_bar_row(self, bar_info: dict):
+        # Create 5 horizontal resistance bars
         layout = QHBoxLayout()
         layout.setSpacing(4)
 
-        for i in range(5):
-            bar = QFrame()
-            bar.setFixedSize(22, 10)
-            color = "#2ecc71" if i < filled_count else "rgba(255, 255, 255, 40)"
-            bar.setStyleSheet(
-                f"background-color: {color}; border-radius: 3px;"
+        full = bar_info.get("full", 0)
+        half = bar_info.get("half", 0)
+
+        total_bars = 5
+        bar_width = 30
+        bar_height = 10
+
+        for i in range(total_bars):
+            # Outer empty bar
+            container = QFrame()
+            container.setFixedSize(bar_width, bar_height)
+            container.setStyleSheet(
+                "background-color: rgba(255, 255, 255, 40); border-radius: 3px;"
             )
-            layout.addWidget(bar)
+
+            fill_width = 0
+            if i < full:
+                # Full bar
+                fill_width = bar_width
+            elif i == full and half:
+                # Half bar
+                fill_width = bar_width // 2
+            # Inner green fill
+            if fill_width > 0:
+                filled = QFrame(container)
+                filled.setGeometry(0, 0, fill_width, bar_height)
+                filled.setStyleSheet(
+                    "background-color: #2ecc71; border-radius: 3px;"
+                )
+
+            layout.addWidget(container)
 
         return layout
 
