@@ -102,7 +102,7 @@ class ArtifactConfigView(QWidget):
         self._build_type_combo = QComboBox()
         self._build_type_combo.setFixedWidth(220)
         self._build_type_combo.addItems(
-            ["Balanced", "Anomaly Protections", "Endurance", "Bleed Resistance", "Weight"]
+            ["Balanced", "Anomaly Protections", "Endurance", "Bleed Resistance"]
         )
         self._build_type_combo.setStyleSheet(
             """
