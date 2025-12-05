@@ -9,6 +9,7 @@ from views.armor_config_view import ArmorConfigView
 from views.artifact_selection_view import ArtifactSelectionView
 from views.artifact_config_view import ArtifactConfigView
 from views.build_results_view import BuildResultsView
+from utils.abo_model import run_model
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -64,6 +65,8 @@ class MainWindow(QMainWindow):
         self.armor_selection_view.next_requested.connect(self._on_armor_chosen)
         self.artifact_selection_view.back_requested.connect(self._show_armor_config)
         self.artifact_selection_view.next_requested.connect(self._on_artifact_selection_done)
+        self.artifact_config_view.next_requested.connect(self._on_artifact_config_done)
+        self.build_results_view.back_requested.connect(self._show_artifact_config)
 
     # Background
     def _setup_background(self):
@@ -100,6 +103,10 @@ class MainWindow(QMainWindow):
         if self.armor_config_view is not None:
             self.stack.setCurrentWidget(self.armor_config_view)
 
+    def _show_artifact_config(self):
+        # Back button on results sends you back to artifact configuration
+        self.stack.setCurrentWidget(self.artifact_config_view)
+
     def _on_armor_config_done(self, armor_config: dict):
         self._armor_config = armor_config
         armor = armor_config["armor"]
@@ -113,6 +120,16 @@ class MainWindow(QMainWindow):
             return
         self.artifact_config_view.set_context(self._armor_config, selected_artifacts)
         self.stack.setCurrentWidget(self.artifact_config_view)
+
+    def _on_artifact_config_done(self, payload: dict):
+        # Run model and show build results
+        result = run_model(
+            armor_config=payload["armor_config"],
+            artifacts=payload["artifacts"],
+            build_type=payload["build_type"],
+        )
+        self.build_results_view.set_context(result)
+        self.stack.setCurrentWidget(self.build_results_view)
 
 
 def main():
