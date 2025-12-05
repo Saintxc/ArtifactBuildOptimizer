@@ -7,6 +7,7 @@ from data.data_client import load_armor_data, load_artifact_data
 from views.armor_selection_view import ArmorSelectionView
 from views.armor_config_view import ArmorConfigView
 from views.artifact_selection_view import ArtifactSelectionView
+from views.artifact_config_view import ArtifactConfigView
 from views.build_results_view import BuildResultsView
 
 
@@ -40,15 +41,20 @@ class MainWindow(QMainWindow):
         armors = load_armor_data()
         artifacts = load_artifact_data()
 
+        # Keep last armor configuration for later steps
+        self._armor_config: dict | None = None
+
         # Views we have from the start
         self.armor_selection_view = ArmorSelectionView(armors)
         self.armor_config_view: ArmorConfigView | None = None
         self.artifact_selection_view = ArtifactSelectionView(artifacts)
+        self.artifact_config_view = ArtifactConfigView()
         self.build_results_view = BuildResultsView()
 
         # Add the views to the stack
         self.stack.addWidget(self.armor_selection_view)
         self.stack.addWidget(self.artifact_selection_view)
+        self.stack.addWidget(self.artifact_config_view)
         self.stack.addWidget(self.build_results_view)
 
         # Start on armor selection
@@ -57,6 +63,7 @@ class MainWindow(QMainWindow):
         # Wire signals
         self.armor_selection_view.next_requested.connect(self._on_armor_chosen)
         self.artifact_selection_view.back_requested.connect(self._show_armor_config)
+        self.artifact_selection_view.next_requested.connect(self._on_artifact_selection_done)
 
     # Background
     def _setup_background(self):
@@ -94,11 +101,18 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(self.armor_config_view)
 
     def _on_armor_config_done(self, armor_config: dict):
+        self._armor_config = armor_config
         armor = armor_config["armor"]
         slots = armor_config["slots_selected"]
         containers = armor_config["lead_containers_selected"]
         self.artifact_selection_view.set_context(armor, slots, containers)
         self.stack.setCurrentWidget(self.artifact_selection_view)
+
+    def _on_artifact_selection_done(self, selected_artifacts: list[dict]):
+        if self._armor_config is None:
+            return
+        self.artifact_config_view.set_context(self._armor_config, selected_artifacts)
+        self.stack.setCurrentWidget(self.artifact_config_view)
 
 
 def main():

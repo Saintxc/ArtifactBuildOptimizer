@@ -8,7 +8,7 @@ from utils.image_loader import load_pixmap_from_url
 class ArtifactSelectionView(QWidget):
     # Select artifacts
     back_requested = pyqtSignal()
-    next_requested = pyqtSignal(dict)
+    next_requested = pyqtSignal(list)
 
     def __init__(self, artifacts: List[Dict], parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -229,12 +229,6 @@ class ArtifactSelectionView(QWidget):
         self.back_requested.emit()
 
     def _on_next_clicked(self):
-        # Emit selected artifacts and context
-        selected = [btn.artifact_data for btn in self._buttons if btn.isChecked()]
-        payload = {
-            "armor": self._armor,
-            "slots": self._slots,
-            "lead_containers": self._containers,
-            "artifacts": selected,
-        }
-        self.next_requested.emit(payload)
+        # Emit selected artifact list
+        selected = [b.artifact_data for b in self._buttons if b.isChecked()]
+        self.next_requested.emit(selected)
