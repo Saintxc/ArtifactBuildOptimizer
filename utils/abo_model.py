@@ -1,4 +1,6 @@
 from typing import Any, Dict, List
+from pathlib import Path
+import joblib
 from utils.stats import (ARTIFACT_BONUS, ARTIFACT_TO_ARMOR_STAT, armor_resistances, apply_artifact_resists,
     effective_resist_bars, compute_artifact_radiation_balance)
 
@@ -9,6 +11,91 @@ for art_key, armor_key in ARTIFACT_TO_ARMOR_STAT.items():
     if armor_key in ("thermal", "electrical", "chemical", "physical"):
         PROTECTION_KEYS.setdefault(armor_key, []).append(art_key)
 
+# ML model path / cache
+MODEL_PATH = Path(__file__).resolve().parent / "abo_ml_model.joblib"
+_ML_MODEL = None
+
+
+def _get_ml_model():
+    # Lazy load trained ML model
+    global _ML_MODEL
+    if _ML_MODEL is not None:
+        return _ML_MODEL
+    if joblib is None or not MODEL_PATH.exists():
+        return None
+    try:
+        _ML_MODEL = joblib.load(MODEL_PATH)
+    except Exception:
+        _ML_MODEL = None
+    return _ML_MODEL
+
+
+def _build_features_for_runtime(
+    armor_resists: Dict[str, float],
+    stats: Dict[str, Any],
+    build_type: str,
+) -> List[float]:
+    # Build feature vector for ML model
+    feats: List[float] = [
+        float(armor_resists.get("thermal", 0.0)),
+        float(armor_resists.get("electrical", 0.0)),
+        float(armor_resists.get("chemical", 0.0)),
+        float(armor_resists.get("radiation", 0.0)),
+        float(armor_resists.get("psi", 0.0)),
+        float(armor_resists.get("physical", 0.0)),
+    ]
+
+    def lvl(name: str) -> float:
+        try:
+            lvl_val = int(stats.get(name, 0))
+        except (TypeError, ValueError):
+            lvl_val = 0
+        return float(ARTIFACT_BONUS.get(lvl_val, 0))
+
+    feats.extend(
+        [
+            lvl("thermal_protection"),
+            lvl("electrical_protection"),
+            lvl("chemical_protection"),
+            lvl("physical_protection"),
+            lvl("endurance"),
+            lvl("increased_durability"),
+            lvl("bleeding_resistance"),
+            lvl("weight"),
+            lvl("radiation"),
+            lvl("radio_protection"),
+        ]
+    )
+
+    bt = (build_type or "").lower()
+    feats.extend(
+        [
+            1.0 if bt == "balanced" else 0.0,
+            1.0 if bt == "anomaly protections" else 0.0,
+            1.0 if bt == "endurance" else 0.0,
+            1.0 if bt == "bleed resistance" else 0.0,
+        ]
+    )
+
+    return feats
+
+def _ml_score_artifact_for_build(
+    artifact: Dict,
+    armor_resists: Dict[str, float],
+    build_type: str,
+) -> float | None:
+    # Predict artifact quality using trained ML model
+    model = _get_ml_model()
+    if model is None:
+        return None
+
+    stats = artifact.get("stats", {}) or {}
+    feats = _build_features_for_runtime(armor_resists, stats, build_type)
+    try:
+        pred = model.predict([feats])[0]
+        return float(pred)
+    except Exception:
+        return None
 
 def _level_value(level: Any) -> float:
     # Convert artifact level into numeric value
@@ -70,8 +157,13 @@ def _radiation_penalty(stats: Dict[str, Any]) -> float:
 
     return max(0.0, float(rad_val - radio_val))
 
-def _score_artifact_for_build(artifact: Dict, armor_resists: Dict[str, float], build_type: str,) -> Dict[str, float]:
-    # Score artifact for given build type
+
+def _score_artifact_for_build(
+    artifact: Dict,
+    armor_resists: Dict[str, float],
+    build_type: str,
+) -> Dict[str, float]:
+    # Score artifact for given build type (heuristic)
     stats = artifact.get("stats", {}) or {}
 
     prot = _protection_score(stats, armor_resists)
@@ -137,21 +229,42 @@ def _choose_artifacts(
     build_type: str,
 ) -> List[Dict]:
     # Choose artifacts for slots / lead containers
-    armor_resists = _armor_resists(armor)
-
     if slots <= 0 or not artifacts:
         return []
 
-    scored: List[Dict] = []
+    # Start from base armor resistances and recompute after each artifact has been chosen
+    current_resists = _armor_resists(armor)
+    remaining = list(artifacts)
+    chosen: List[Dict] = []
 
-    for art in artifacts:
-        scores = _score_artifact_for_build(art, armor_resists, build_type)
-        scores["artifact"] = art
-        scores["in_lead_container"] = False
-        scored.append(scores)
+    for _ in range(min(slots, len(remaining))):
+        best_item: Dict | None = None
+        best_art: Dict | None = None
+        best_score = float("-inf")
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    chosen = scored[: min(slots, len(scored))]
+        for art in remaining:
+            scores = _score_artifact_for_build(art, current_resists, build_type)
+
+            ml_val = _ml_score_artifact_for_build(art, current_resists, build_type)
+            if ml_val is not None:
+                scores["score"] = ml_val
+
+            scores["artifact"] = art
+            scores["in_lead_container"] = False
+
+            if scores["score"] > best_score:
+                best_score = scores["score"]
+                best_item = scores
+                best_art = art
+
+        if best_item is None or best_art is None:
+            break
+
+        chosen.append(best_item)
+        remaining.remove(best_art)
+
+        # Update current resistances based on the newly chosen artifact
+        current_resists = apply_artifact_resists(current_resists, [best_art])
 
     if lead_slots > 0 and chosen:
         by_rad = sorted(chosen, key=lambda x: x["radiation_penalty"], reverse=True)
