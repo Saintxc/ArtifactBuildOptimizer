@@ -6,7 +6,10 @@ from utils.image_loader import load_pixmap_from_url
 
 
 class ArtifactSelectionView(QWidget):
-    # Select artifacts
+    """
+    Allows the user to select multiple artifacts they own.
+    The algorithm will only use the artifacts that are selected on this screen
+    """
     back_requested = pyqtSignal()
     next_requested = pyqtSignal(list)
 
@@ -20,14 +23,13 @@ class ArtifactSelectionView(QWidget):
 
         self._build_ui()
 
+    # Receive the armor config from the main window
     def set_context(self, armor: Dict, slots: int, containers: int):
-        # Store armor configuration
         self._armor = armor
         self._slots = slots
         self._containers = containers
 
     def _build_ui(self):
-        # Build main artifact selection layout
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         root_layout = QVBoxLayout(self)
@@ -72,7 +74,9 @@ class ArtifactSelectionView(QWidget):
             row = index // columns
             col = index % columns
 
+            # Creates a toggleable button
             btn = QToolButton()
+            # Acts as a 'checkbox'
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
@@ -81,12 +85,15 @@ class ArtifactSelectionView(QWidget):
             name = art.get("name", "Artifact")
             btn.setText(name)
 
+            # Artifact image loading
             pixmap = load_pixmap_from_url(art.get("image_url", ""), size=(80, 80))
             if not pixmap.isNull():
                 btn.setIcon(QIcon(pixmap))
                 btn.setIconSize(QSize(80, 80))
 
+            # Initial styling
             btn.setStyleSheet(self._button_stylesheet(False))
+            # Connect the toggle signal to our handler
             btn.toggled.connect(self._on_artifact_toggled)
 
             btn.artifact_data = art
@@ -96,11 +103,11 @@ class ArtifactSelectionView(QWidget):
         scroll.setWidget(container)
         root_layout.addWidget(scroll, stretch=1)
 
-        # Bottom bar with Back/ Clear All/ Select All/ Next
+        # Bottom navigation bar
         bottom_bar = QHBoxLayout()
         bottom_bar.setSpacing(16)
 
-        # Back
+        # Back Button
         back_btn = QPushButton("Back")
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.clicked.connect(self._on_back_clicked)
@@ -121,7 +128,7 @@ class ArtifactSelectionView(QWidget):
 
         bottom_bar.addStretch(1)
 
-        # Center buttons: Selected count/ Clear All/ Select All
+        # Center buttons: Clear All and Select All
         self.selected_label = QLabel("Selected: 0")
         self.selected_label.setStyleSheet("color: white; font-size: 14px;")
         bottom_bar.addWidget(self.selected_label)
@@ -163,7 +170,7 @@ class ArtifactSelectionView(QWidget):
 
         bottom_bar.addStretch(1)
 
-        # Next
+        # Next Button
         next_btn = QPushButton("Next")
         next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         next_btn.clicked.connect(self._on_next_clicked)
@@ -200,35 +207,35 @@ class ArtifactSelectionView(QWidget):
             }}
         """
 
+    # Refresh selected amount value
     def _update_selected_label(self):
-        # Refresh selected amount value
         count = sum(1 for b in self._buttons if b.isChecked())
         self.selected_label.setText(f"Selected: {count}")
 
+    # Update visuals and selected artifact
     def _on_artifact_toggled(self, checked: bool):
-        # Update visuals and selected count
         btn = self.sender()
         if isinstance(btn, QToolButton):
             btn.setStyleSheet(self._button_stylesheet(checked))
         self._update_selected_label()
 
+    # Deselect all artifacts
     def _on_clear_all(self):
-        # Deselect all artifacts
         for btn in self._buttons:
             btn.setChecked(False)
         self._update_selected_label()
 
+    # Select all artifacts
     def _on_select_all(self):
-        # Select all artifacts
         for btn in self._buttons:
             btn.setChecked(True)
         self._update_selected_label()
 
+    # Go back to armor config
     def _on_back_clicked(self):
-        # Go back to armor config
         self.back_requested.emit()
 
+    # Filter the list to find only the selected artifacts
     def _on_next_clicked(self):
-        # Emit selected artifact list
         selected = [b.artifact_data for b in self._buttons if b.isChecked()]
         self.next_requested.emit(selected)

@@ -4,7 +4,7 @@ from typing import Dict, List
 BAR_MAX = 5
 BAR_STEP = 20
 
-# Numeric value for artifact stats
+# Numeric value for artifact stats received from in game testing
 ARTIFACT_BONUS: Dict[int, int] = {
     1: 10,
     2: 15,
@@ -22,9 +22,8 @@ ARTIFACT_TO_ARMOR_STAT: Dict[str, str] = {
     "electrical_protection": "electrical",
 }
 
-
+# Convert 0-100 resistance into 0–5 bars
 def value_to_bars(value: int) -> int:
-    # Convert 0-100 resistance into 0–5 bars
     bars = value // BAR_STEP
     if bars < 0:
         bars = 0
@@ -32,19 +31,20 @@ def value_to_bars(value: int) -> int:
         bars = BAR_MAX
     return bars
 
-
+# Return armor resistances as ints
 def armor_resistances(armor: Dict) -> Dict[str, int]:
-    # Return armor resistances as ints
     res = armor.get("resistances", {})
     return {k: int(v) for k, v in res.items()}
 
-
+# Returns a dictionary on how to draw the bars in the UI
+# Ex. for 50, there would be Full: 2 bars, Half: 1 bars, Empty: 2 bars
 def armor_resist_bars(armor: dict) -> dict:
     res = armor.get("resistances", {})
     bars = {}
 
     for key, value in res.items():
         full = value // 20
+        # If the leftover stat is >= 10, it appears as a 1/2 bar in the UI
         leftover = value % 20
         half = 1 if leftover >= 10 else 0
 
@@ -59,10 +59,8 @@ def armor_resist_bars(armor: dict) -> dict:
 
     return bars
 
-
-def apply_artifact_resists(base_resists: Dict[str, int],
-                           artifacts: List[Dict]) -> Dict[str, int]:
-    # Return armor resistances after artifact bonuses
+# Return armor resistances after artifact bonuses
+def apply_artifact_resists(base_resists: Dict[str, int], artifacts: List[Dict]) -> Dict[str, int]:
     result = dict(base_resists)
 
     for art in artifacts:
@@ -77,16 +75,14 @@ def apply_artifact_resists(base_resists: Dict[str, int],
 
     return result
 
-
+# Return resistance bar counts with artifacts applied
 def effective_resist_bars(armor: Dict, artifacts: List[Dict]) -> Dict[str, int]:
-    # Return resistance bar counts with artifacts applied
     base = armor_resistances(armor)
     boosted = apply_artifact_resists(base, artifacts)
     return {name: value_to_bars(val) for name, val in boosted.items()}
 
-
+# Net artifact radiation after radio protection (positive = good / negative = bad)
 def compute_artifact_radiation_balance(artifacts: List[Dict]) -> int:
-    # Net artifact radiation after radio protection (positive = good / negative = bad)
     total_rad = 0
     total_radio_prot = 0
 

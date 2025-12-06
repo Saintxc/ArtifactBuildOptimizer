@@ -6,18 +6,23 @@ from utils.stats import armor_resist_bars
 
 
 class BuildResultsView(QWidget):
-    # Show final build from model
+    """
+    Final Results:
+    It takes the results from the calculator and displays them in
+    a user-friendly format and informs them if the build is safe or unsafe
+    """
     back_requested = pyqtSignal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-
+        # Placeholders for the data
         self._armor: Dict | None = None
         self._final_resists: Dict[str, int] = {}
         self._final_bars: Dict[str, Dict[str, int]] = {}
         self._chosen_artifacts: List[Dict] = []
         self._radiation_balance: int = 0
 
+        # UI references for dynamic updates
         self._armor_image_label: QLabel | None = None
         self._armor_name_label: QLabel | None = None
         self._bars_container: QVBoxLayout | None = None
@@ -27,20 +32,24 @@ class BuildResultsView(QWidget):
         self._build_ui()
 
     def set_context(self, result: Dict):
-        # Use model result and refresh UI
+        """
+        Populate the view with the results from the model.
+        Called immediately before showing the view
+        """
         self._armor = result.get("armor", {})
         self._final_resists = result.get("final_resistances", {}) or {}
         self._final_bars = armor_resist_bars({"resistances": self._final_resists})
         self._chosen_artifacts = result.get("chosen_artifacts", []) or []
         self._radiation_balance = int(result.get("radiation_balance", 0))
 
+        # Refresh all the sub-components
         self._refresh_armor_card()
         self._refresh_resistance_rows()
         self._refresh_artifact_cards()
         self._update_radiation_status()
 
+    # Build main layout (similar to all other views)
     def _build_ui(self):
-        # Build main layout
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         root = QVBoxLayout(self)
@@ -189,8 +198,8 @@ class BuildResultsView(QWidget):
 
         root.addLayout(bottom)
 
+    # Update armor card content
     def _refresh_armor_card(self):
-        # Update armor card content
         if not self._armor:
             self._armor_image_label.clear()
             self._armor_name_label.setText("")
@@ -204,8 +213,8 @@ class BuildResultsView(QWidget):
 
         self._armor_name_label.setText(self._armor.get("name", "Unknown Armor"))
 
+    # Recursively delete all widgets and sub-layouts
     def _clear_layout(self, layout):
-        # Recursively delete all widgets and sub-layouts
         while layout.count():
             item = layout.takeAt(0)
 
@@ -217,11 +226,17 @@ class BuildResultsView(QWidget):
             if child_layout is not None:
                 self._clear_layout(child_layout)
 
+    # Rebuild resistance bar rows
     def _refresh_resistance_rows(self):
-        # Rebuild resistance bar rows
+        """
+        Dynamically clears and rebuilds the resistance bars.
+        This is important because before the bars would keep stacking on top of one another
+        and eventually became unreadable.
+        """
         if self._bars_container is None:
             return
 
+        # Clean up old widgets to prevent memory leaks or visual clutter
         self._clear_layout(self._bars_container)
 
         if not self._final_bars:
@@ -248,14 +263,15 @@ class BuildResultsView(QWidget):
             lbl.setStyleSheet("color: white; font-size: 14px;")
             row_layout.addWidget(lbl)
 
+            # Re-use the bar drawing logic
             bars_layout = self._create_bar_row(bar_info)
             row_layout.addLayout(bars_layout)
             row_layout.addStretch(1)
 
             self._bars_container.addLayout(row_layout)
 
+    # Create 5 horizontal resistance bars
     def _create_bar_row(self, bar_info: dict):
-        # Create 5 horizontal resistance bars
         layout = QHBoxLayout()
         layout.setSpacing(4)
 
@@ -293,8 +309,8 @@ class BuildResultsView(QWidget):
 
         return layout
 
+    # Rebuild artifact cards grid with chosen artifacts
     def _refresh_artifact_cards(self):
-        # Rebuild artifact cards grid
         while self._artifacts_grid.count():
             item = self._artifacts_grid.takeAt(0)
             if item.widget():
@@ -314,6 +330,7 @@ class BuildResultsView(QWidget):
             card = QFrame()
             card.setObjectName("resultsArtifactCard")
 
+            # If the artifact is in a lead container, give it a thick white border to signify that
             if in_lead:
                 border = "2px solid rgba(230, 230, 230, 230)"
             else:
@@ -347,8 +364,13 @@ class BuildResultsView(QWidget):
 
             self._artifacts_grid.addWidget(card, row, col)
 
+    # Update SAFE / UNSAFE based on radiation
     def _update_radiation_status(self):
-        # Update SAFE / UNSAFE based on radiation
+        """
+        Changes the text color at the top of the app to indicate radiation status.
+        Green means it's safe and displays SAFE
+        Red means it's safe and displays UNSAFE
+        """
         net_radiation = -self._radiation_balance
 
         if net_radiation > 0:

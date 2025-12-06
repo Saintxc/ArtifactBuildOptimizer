@@ -22,13 +22,13 @@ class ArmorSelectionView(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(16)
 
-        # Title label
+        # 1.) Title label
         title = QLabel("Armor Selection")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: white; font-size: 22px; font-weight: bold;")
         root_layout.addWidget(title)
 
-        # Scroll area with grid of armor buttons
+        # 2.) Scroll area with grid of armor buttons since there are too many to list within the small screen
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameStyle(0)
@@ -49,12 +49,14 @@ class ArmorSelectionView(QWidget):
             }
         """)
 
+        # Container inside the scroll area that holds the armor grid
         scroll_container = QWidget()
         grid = QGridLayout(scroll_container)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(16)
 
+        # Ensures only 1 armor can be selected at a time
         self._button_group = QButtonGroup(self)
         self._button_group.setExclusive(True)
         self._button_group.buttonClicked.connect(self._on_button_clicked)
@@ -71,16 +73,14 @@ class ArmorSelectionView(QWidget):
 
             # Put text under armor
             btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-
-            # Make tiles big enough for icon + text
             btn.setMinimumSize(230, 220)
 
-            # Text and icon
+            # Set the data
             name = armor.get("name", "Unknown Armor")
             btn.setText(name)
             btn.setStyleSheet(self._button_stylesheet(selected=False))
 
-            # Larger pixmap so it fills better
+            # Load the icon
             pixmap = load_pixmap_from_url(armor.get("image_url", ""), size=(150, 150))
             if not pixmap.isNull():
                 icon = QIcon(pixmap)
@@ -96,7 +96,7 @@ class ArmorSelectionView(QWidget):
         scroll.setWidget(scroll_container)
         root_layout.addWidget(scroll, stretch=1)
 
-        # Bottom bar with "Next" button
+        # Bottom bar with navigation buttons
         bottom_bar = QHBoxLayout()
         bottom_bar.addStretch(1)
 
@@ -126,7 +126,7 @@ class ArmorSelectionView(QWidget):
         bottom_bar.addWidget(self.next_button)
         root_layout.addLayout(bottom_bar)
 
-    # Helpers
+    # Styling helpers
     @staticmethod
     def _button_stylesheet(selected: bool) -> str:
         base_border = "2px solid #ffffff" if selected else "1px solid #000000"
@@ -148,18 +148,20 @@ class ArmorSelectionView(QWidget):
             }}
         """
 
-    # Slots
+    # Interation slots
+    # Called when any armor is clicked
     def _on_button_clicked(self, button: QPushButton):
-        # Update selection
+        # Retrieve the data we attached earlier
         self._selected_armor = getattr(button, "armor_data", None)
+        # Enable the next button since an armor has been selected
         self.next_button.setEnabled(self._selected_armor is not None)
 
-        # Update visuals for all buttons
+        # Force a style refresh so the green border appears correctly
         for btn in self._button_group.buttons():
             btn.setStyleSheet(self._button_stylesheet(selected=btn is button))
 
+    # Broadcast the selected armor to the main window
     def _on_next_clicked(self):
         if self._selected_armor is None:
             return
-        # Emit the selected armor
         self.next_requested.emit(self._selected_armor)

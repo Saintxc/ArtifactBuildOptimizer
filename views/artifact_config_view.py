@@ -6,7 +6,10 @@ from utils.stats import armor_resist_bars
 
 
 class ArtifactConfigView(QWidget):
-    # Configure build goal and review artifacts
+    """
+    Final Step:
+    The user defines what their build goal is
+    """
     back_requested = pyqtSignal()
     next_requested = pyqtSignal(dict)
 
@@ -26,8 +29,8 @@ class ArtifactConfigView(QWidget):
 
         self._build_ui()
 
+    # Store armor config and artifacts
     def set_context(self, armor_config: Dict, artifacts: List[Dict]):
-        # Store armor config and artifacts
         self._armor_config = armor_config
         self._armor = armor_config["armor"]
         self._selected_artifacts = artifacts
@@ -37,8 +40,8 @@ class ArtifactConfigView(QWidget):
         self._refresh_resistance_rows()
         self._refresh_artifacts()
 
+    # Build main layout (similar to other screens)
     def _build_ui(self):
-        # Build main layout
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         root = QVBoxLayout(self)
@@ -213,8 +216,8 @@ class ArtifactConfigView(QWidget):
 
         root.addLayout(bottom)
 
+    # Update armor image and name
     def _refresh_armor_card(self):
-        # Update armor image and name
         if not self._armor:
             return
 
@@ -226,8 +229,8 @@ class ArtifactConfigView(QWidget):
 
         self._armor_name_label.setText(self._armor.get("name", "Unknown Armor"))
 
+    # Build base resistance rows
     def _refresh_resistance_rows(self):
-        # Build base resistance rows
         while self._bars_container.count():
             item = self._bars_container.takeAt(0)
             if item.widget():
@@ -260,8 +263,8 @@ class ArtifactConfigView(QWidget):
 
             self._bars_container.addLayout(row_layout)
 
+    # Create 5 horizontal resistance bars
     def _create_bar_row(self, bar_info: dict):
-        # Create 5 horizontal resistance bars
         layout = QHBoxLayout()
         layout.setSpacing(4)
 
@@ -299,8 +302,8 @@ class ArtifactConfigView(QWidget):
 
         return layout
 
+    # Rebuild selected artifact cards
     def _refresh_artifacts(self):
-        # Rebuild selected artifact cards
         while self._artifacts_grid.count():
             item = self._artifacts_grid.takeAt(0)
             if item.widget():
@@ -344,17 +347,23 @@ class ArtifactConfigView(QWidget):
 
             self._artifacts_grid.addWidget(card, row, col)
 
+    # Go back to the artifact selection screen
     def _on_back_clicked(self):
-        # Emit back navigation
         self.back_requested.emit()
 
     def _on_generate_clicked(self):
-        # Emit build configuration payload
+        """
+        Packages all data collected across all steps into one payload
+        and sends it to the main window to run the model
+        """
         payload = {
+            # 1.) Armor/ Artifact Slots/ Lead Containers
             "armor_config": self._armor_config,
+            # 2.) The desired build type
             "build_type": self._build_type_combo.currentText()
             if self._build_type_combo
             else "Balanced",
+            # 3.) The artifacts selected
             "artifacts": self._selected_artifacts,
         }
         self.next_requested.emit(payload)

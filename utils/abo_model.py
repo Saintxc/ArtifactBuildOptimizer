@@ -4,7 +4,8 @@ import joblib
 from utils.stats import (ARTIFACT_BONUS, ARTIFACT_TO_ARMOR_STAT, armor_resistances, apply_artifact_resists,
     effective_resist_bars, compute_artifact_radiation_balance)
 
-# Build mapping: armor resistance to artifact stat keys that boost it
+# Build mapping:
+# We need to know which artifacts boost which stat and which armor resistance
 PROTECTION_KEYS: Dict[str, List[str]] = {}
 
 for art_key, armor_key in ARTIFACT_TO_ARMOR_STAT.items():
@@ -15,17 +16,18 @@ for art_key, armor_key in ARTIFACT_TO_ARMOR_STAT.items():
 MODEL_PATH = Path(__file__).resolve().parent / "abo_ml_model.joblib"
 _ML_MODEL = None
 
-
+# Only load the model the first time the app is run. Prevents app from freezing if model is too large
 def _get_ml_model():
-    # Lazy load trained ML model
     global _ML_MODEL
     if _ML_MODEL is not None:
         return _ML_MODEL
+    # Checks  if the file actually exists before trying to load
     if joblib is None or not MODEL_PATH.exists():
         return None
     try:
         _ML_MODEL = joblib.load(MODEL_PATH)
     except Exception:
+        # If failure to load, fail silently
         _ML_MODEL = None
     return _ML_MODEL
 
@@ -35,7 +37,7 @@ def _build_features_for_runtime(
     stats: Dict[str, Any],
     build_type: str,
 ) -> List[float]:
-    # Build feature vector for ML model
+    # 1.) Add the armor base stats
     feats: List[float] = [
         float(armor_resists.get("thermal", 0.0)),
         float(armor_resists.get("electrical", 0.0)),
@@ -45,6 +47,7 @@ def _build_features_for_runtime(
         float(armor_resists.get("physical", 0.0)),
     ]
 
+    # Helper to safely get the numeric value from the stat name
     def lvl(name: str) -> float:
         try:
             lvl_val = int(stats.get(name, 0))
@@ -52,6 +55,7 @@ def _build_features_for_runtime(
             lvl_val = 0
         return float(ARTIFACT_BONUS.get(lvl_val, 0))
 
+    # 2.) Add the artifact stats
     feats.extend(
         [
             lvl("thermal_protection"),
@@ -67,6 +71,7 @@ def _build_features_for_runtime(
         ]
     )
 
+    # One Hot Encode the desired build type
     bt = (build_type or "").lower()
     feats.extend(
         [
@@ -84,7 +89,7 @@ def _ml_score_artifact_for_build(
     armor_resists: Dict[str, float],
     build_type: str,
 ) -> float | None:
-    # Predict artifact quality using trained ML model
+    # Asks the model to predict how good this artifact is
     model = _get_ml_model()
     if model is None:
         return None
@@ -92,34 +97,39 @@ def _ml_score_artifact_for_build(
     stats = artifact.get("stats", {}) or {}
     feats = _build_features_for_runtime(armor_resists, stats, build_type)
     try:
+        # 0 is used because predict returns a list, but we are only sending 1 item
         pred = model.predict([feats])[0]
         return float(pred)
     except Exception:
         return None
 
+# Convert artifact level into numeric value
 def _level_value(level: Any) -> float:
-    # Convert artifact level into numeric value
     try:
         lvl = int(level)
     except (TypeError, ValueError):
         return 0.0
     return float(ARTIFACT_BONUS.get(lvl, 0))
 
-
+# Return armor resistances as floats
 def _armor_resists(armor: Dict) -> Dict[str, float]:
-    # Return armor resistances as floats
     base = armor_resistances(armor)
     return {k: float(v) for k, v in base.items()}
 
 
 def _protection_score(stats: Dict[str, Any], armor_resists: Dict[str, float]) -> float:
-    # Score protections, weighting weak armor resists
+    """
+    Calculates the protection score based on armor_resists
+    Whatever protection is the lowest,
+    we value an artifact with that stat higher
+    """
     score = 0.0
 
     for resist_type, art_keys in PROTECTION_KEYS.items():
         base = armor_resists.get(resist_type, 0.0)
+        # Calculate the need (how far from 100 is the stat)
         missing = max(0.0, 100.0 - base)
-        # 1.0 to 2.0
+        # Multiplier (1.0 if full, up to 2.0 if empty)
         importance = 1.0 + (missing / 100.0)
 
         value = 0.0
@@ -130,25 +140,24 @@ def _protection_score(stats: Dict[str, Any], armor_resists: Dict[str, float]) ->
 
     return score
 
-
+# Score endurance stat
 def _endurance_score(stats: Dict[str, Any]) -> float:
-    # Score endurance stat
     return _level_value(stats.get("endurance", 0))
 
+# Score increased durability stat
 def _durability_score(stats: Dict[str, Any]) -> float:
-    # Score increased durability stat
     return _level_value(stats.get("increased_durability", 0))
 
+# Score bleeding resistance stat
 def _bleed_score(stats: Dict[str, Any]) -> float:
-    # Score bleeding resistance stat
     return _level_value(stats.get("bleeding_resistance", 0))
 
+# Score weight stat
 def _weight_score(stats: Dict[str, Any]) -> float:
-    # Score weight stat
     return _level_value(stats.get("weight", 0))
 
+# Radiation penalty after radio protection (0 or negative is good)
 def _radiation_penalty(stats: Dict[str, Any]) -> float:
-    # Radiation penalty after radio protection (0 or negative is good)
     lvl_rad = int(stats.get("radiation", 0))
     lvl_radio = int(stats.get("radio_protection", 0))
 
@@ -158,12 +167,12 @@ def _radiation_penalty(stats: Dict[str, Any]) -> float:
     return max(0.0, float(rad_val - radio_val))
 
 
-def _score_artifact_for_build(
-    artifact: Dict,
-    armor_resists: Dict[str, float],
-    build_type: str,
-) -> Dict[str, float]:
-    # Score artifact for given build type
+def _score_artifact_for_build(artifact: Dict, armor_resists: Dict[str, float], build_type: str,) -> Dict[str, float]:
+    """
+    Heuristic Function:
+    Assigns weights (multipliers) to the different stas based on what the user asked for their build.
+    Ex: If user wanted an 'Endurance' build, the endurance stat gets a score of 2.0
+    """
     stats = artifact.get("stats", {}) or {}
 
     prot = _protection_score(stats, armor_resists)
@@ -174,7 +183,7 @@ def _score_artifact_for_build(
     rad_pen = _radiation_penalty(stats)
 
     bt = build_type.lower()
-
+    # Define the weights based on the build type selection
     if bt == "anomaly protections":
         score = (
             2.0 * prot
@@ -201,7 +210,7 @@ def _score_artifact_for_build(
             - 0.7 * rad_pen
         )
     else:
-        # Balanced
+        # Balanced build choice weights
         score = (
             1.3 * prot
             + 1.2 * endur
@@ -210,7 +219,7 @@ def _score_artifact_for_build(
             + 1.0 * weight
             - 0.8 * rad_pen
         )
-
+    # Return breakdown of scores for debugging
     return {
         "score": score,
         "protection_score": prot,
@@ -221,51 +230,62 @@ def _score_artifact_for_build(
         "radiation_penalty": rad_pen,
     }
 
-def _choose_artifacts(
-    armor: Dict,
-    artifacts: List[Dict],
-    slots: int,
-    lead_slots: int,
-    build_type: str,
-) -> List[Dict]:
-    # Choose artifacts for slots / lead containers
+def _choose_artifacts(armor: Dict, artifacts: List[Dict], slots: int, lead_slots: int, build_type: str,) -> List[Dict]:
+    """
+    Greedy selection:
+    1.) We look at empty slots
+    2.) For the current selected slot we test all the artifacts selected
+    3.) We pick the artifact that gives the highest boost
+    4.) We add the stats, update the stats, and repeat for the next slot
+    """
     if slots <= 0 or not artifacts:
         return []
 
-    # Start from base armor resistances and recompute after each artifact has been chosen
+    # Start from base armor resistances
     current_resists = _armor_resists(armor)
     remaining = list(artifacts)
     chosen: List[Dict] = []
 
+    # Loop once for every slot we have available
     for _ in range(min(slots, len(remaining))):
         best_item: Dict | None = None
         best_art: Dict | None = None
+        # Starting with negative infinity so any score beats it
         best_score = float("-inf")
 
+        # Test every remaining artifact
         for art in remaining:
+            # Get the heuristic score
             scores = _score_artifact_for_build(art, current_resists, build_type)
 
+            # Check if the ML model has a better selection
             ml_val = _ml_score_artifact_for_build(art, current_resists, build_type)
             if ml_val is not None:
+                # Use the ML score if available
                 scores["score"] = ml_val
 
             scores["artifact"] = art
             scores["in_lead_container"] = False
 
+            # Is this the best artifact we have seen in the loop?
             if scores["score"] > best_score:
                 best_score = scores["score"]
                 best_item = scores
                 best_art = art
 
+        # If nothing better is seen, stop the loop
         if best_item is None or best_art is None:
             break
 
+        # Lock in the choice for that slot
         chosen.append(best_item)
         remaining.remove(best_art)
 
         # Update current resistances based on the newly chosen artifact
         current_resists = apply_artifact_resists(current_resists, [best_art])
 
+    # Sort the chosen artifacts by which has the highest Radiation stat
+    # Highest Radiation Stat artifacts get placed in the lead containers
     if lead_slots > 0 and chosen:
         by_rad = sorted(chosen, key=lambda x: x["radiation_penalty"], reverse=True)
         for i, item in enumerate(by_rad):
@@ -274,13 +294,13 @@ def _choose_artifacts(
 
     return chosen
 
+# Compute final numeric resistances
 def _final_resistances(armor: Dict, chosen: List[Dict]) -> Dict[str, int]:
-    # Compute final numeric resistances
     art_list = [item["artifact"] for item in chosen]
     return apply_artifact_resists(armor_resistances(armor), art_list)
 
+# Compute net radiation only for non-lead container artifacts
 def _radiation_balance_nonlead(chosen: List[Dict]) -> int:
-    # Compute net radiation only for non-lead container artifacts
     non_lead = [item["artifact"] for item in chosen if not item["in_lead_container"]]
     if not non_lead:
         return 0

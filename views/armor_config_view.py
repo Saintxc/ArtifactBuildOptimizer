@@ -6,7 +6,11 @@ from utils.stats import armor_resist_bars
 
 
 class ArmorConfigView(QWidget):
-    # Configure artifact slots and lead containers
+    """
+    This view handles the form part of the app.
+    The user has picked an armor and needs to configure it to their armor in game
+    Ex. How many artifact slots you have/ how many lead containers do you have?
+    """
     back_requested = pyqtSignal()
     next_requested = pyqtSignal(dict)
 
@@ -14,20 +18,23 @@ class ArmorConfigView(QWidget):
         super().__init__(parent)
         self._armor = armor
 
+        # Parse the data safely using .get
         self._slots_base = int(armor.get("slots_base", 0))
         self._slots_total = int(armor.get("slots_total", self._slots_base))
 
         self._lead_base = int(armor.get("lead_containers_base", 0))
         self._lead_total = int(armor.get("lead_containers_total", self._lead_base))
 
+        # Pre-calculate the bar visuals for the resistances from the base stats
         self._base_bar_values = armor_resist_bars(armor)
 
         self._build_ui()
 
     def _build_ui(self):
-        # Build main config layout
+        # Allow background PDA image to show through
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
+        # Root layout is the main vertical stack
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(40, 40, 40, 40)
         root_layout.setSpacing(24)
@@ -38,12 +45,14 @@ class ArmorConfigView(QWidget):
         title.setStyleSheet("color: white; font-size: 22px; font-weight: bold;")
         root_layout.addWidget(title)
 
-        # Main content row (left armor card / right values)
+        # Main content row split horizontally
+        # Left side: Armor Card
+        # Right side: Configuration controls
         content_row = QHBoxLayout()
         content_row.setSpacing(80)
         root_layout.addLayout(content_row, stretch=1)
 
-        # Armor card
+        # Left side: Armor card created using QFrame
         armor_card = QFrame()
         armor_card.setObjectName("armorCard")
         armor_card.setFixedSize(260, 320)
@@ -64,6 +73,7 @@ class ArmorConfigView(QWidget):
             Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignHCenter
         )
 
+        # Image handling
         img_label = QLabel()
         img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pixmap = load_pixmap_from_url(self._armor.get("image_url", ""), size=(180, 180))
@@ -78,14 +88,12 @@ class ArmorConfigView(QWidget):
 
         content_row.addWidget(armor_card)
 
-        # Controls column
+        # Right side: Configuration Controls
         controls_col = QVBoxLayout()
         controls_col.setSpacing(20)
-
-        # Center controls vertically
         controls_col.addStretch(1)
 
-        # Artifact Slots row
+        # Input 1: Artifact Slots
         slots_row = QHBoxLayout()
         slots_row.setSpacing(12)
         slots_row.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -114,9 +122,12 @@ class ArmorConfigView(QWidget):
             """
         )
 
+        # Populate the dropdown options based on the range of valid slots
+        # Start from base amount and go up to the maximum upgrades
         for val in range(self._slots_base, self._slots_total + 1):
             self.slots_combo.addItem(str(val), val)
 
+        # Start at the base amount by default
         idx = self.slots_combo.findData(self._slots_base)
         if idx >= 0:
             self.slots_combo.setCurrentIndex(idx)
@@ -125,7 +136,7 @@ class ArmorConfigView(QWidget):
         slots_row.addStretch(1)
         controls_col.addLayout(slots_row)
 
-        # Lead Containers row
+        # Input 2: Lead Containers (same logic as the artifact slots above)
         lead_row = QHBoxLayout()
         lead_row.setSpacing(12)
         lead_row.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -165,7 +176,7 @@ class ArmorConfigView(QWidget):
         lead_row.addStretch(1)
         controls_col.addLayout(lead_row)
 
-        # Base resistance bars
+        # Shows the base resistances in form of bars so the user knows
         res_title = QLabel("Base Resistances (No Upgrades)")
         res_title.setStyleSheet("color: white; font-size: 24px; font-weight: bold; text-decoration: underline;")
         controls_col.addWidget(res_title)
@@ -189,16 +200,16 @@ class ArmorConfigView(QWidget):
             stat_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
             row.addWidget(stat_label)
 
+            # Generate the visual bar widgets
             row.addLayout(self._create_bar_row(bars))
             row.addStretch(1)
 
             controls_col.addLayout(row)
 
-        # Centered vertically
         controls_col.addStretch(2)
         content_row.addLayout(controls_col, stretch=1)
 
-        # Bottom buttons
+        # Bottom navigation buttons (Back/ Next)
         bottom_bar = QHBoxLayout()
         bottom_bar.setSpacing(16)
 
@@ -241,8 +252,8 @@ class ArmorConfigView(QWidget):
 
         root_layout.addLayout(bottom_bar)
 
+    # Helper to create the 5 resistance bars
     def _create_bar_row(self, bar_info: dict):
-        # Create 5 horizontal resistance bars
         layout = QHBoxLayout()
         layout.setSpacing(4)
 
@@ -253,6 +264,7 @@ class ArmorConfigView(QWidget):
         bar_width = 30
         bar_height = 10
 
+        # Loop 5 times to create the 5 bars
         for i in range(total_bars):
             # Outer empty bar
             container = QFrame()
@@ -280,12 +292,13 @@ class ArmorConfigView(QWidget):
 
         return layout
 
+    # Takes user back to armor selection
     def _on_back_clicked(self):
-        # Emit back navigation
         self.back_requested.emit()
 
+    # Gathers all the data from the configuration into a dictionary
+    # Passes on to the next step
     def _on_next_clicked(self):
-        # Emit selected config values
         armor_config = {
             "armor": self._armor,
             "slots_selected": int(self.slots_combo.currentData()),
