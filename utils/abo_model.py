@@ -163,7 +163,7 @@ def _score_artifact_for_build(
     armor_resists: Dict[str, float],
     build_type: str,
 ) -> Dict[str, float]:
-    # Score artifact for given build type (heuristic)
+    # Score artifact for given build type
     stats = artifact.get("stats", {}) or {}
 
     prot = _protection_score(stats, armor_resists)
@@ -280,7 +280,7 @@ def _final_resistances(armor: Dict, chosen: List[Dict]) -> Dict[str, int]:
     return apply_artifact_resists(armor_resistances(armor), art_list)
 
 def _radiation_balance_nonlead(chosen: List[Dict]) -> int:
-    # Compute net radiation only for non-lead artifacts
+    # Compute net radiation only for non-lead container artifacts
     non_lead = [item["artifact"] for item in chosen if not item["in_lead_container"]]
     if not non_lead:
         return 0

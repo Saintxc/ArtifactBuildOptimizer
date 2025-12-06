@@ -96,7 +96,7 @@ class ArtifactSelectionView(QWidget):
         scroll.setWidget(container)
         root_layout.addWidget(scroll, stretch=1)
 
-        # Bottom bar with Back/ CA/ SA/ Next
+        # Bottom bar with Back/ Clear All/ Select All/ Next
         bottom_bar = QHBoxLayout()
         bottom_bar.setSpacing(16)
 
