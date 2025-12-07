@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
         self.artifact_selection_view.back_requested.connect(self._show_armor_config)
         self.artifact_selection_view.next_requested.connect(self._on_artifact_selection_done)
         self.artifact_config_view.next_requested.connect(self._on_artifact_config_done)
+        self.artifact_config_view.back_requested.connect(self._show_armor_config)
         self.build_results_view.back_requested.connect(self._show_artifact_config)
 
     def _setup_background(self):
