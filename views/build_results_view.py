@@ -330,6 +330,10 @@ class BuildResultsView(QWidget):
             card = QFrame()
             card.setObjectName("resultsArtifactCard")
 
+            desc = art.get("description")
+            if desc:
+                card.setToolTip(desc)
+
             # If the artifact is in a lead container, give it a thick white border to signify that
             if in_lead:
                 border = "2px solid rgba(230, 230, 230, 230)"
