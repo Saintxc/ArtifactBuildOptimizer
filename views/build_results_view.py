@@ -363,7 +363,7 @@ class BuildResultsView(QWidget):
 
             name_lbl = QLabel(art.get("name", "Unknown"))
             name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            name_lbl.setStyleSheet("color: white; font-size: 12px;")
+            name_lbl.setStyleSheet("color: white; font-size: 14px;")
             v.addWidget(name_lbl)
 
             self._artifacts_grid.addWidget(card, row, col)
