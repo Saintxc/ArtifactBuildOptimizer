@@ -130,7 +130,7 @@ def _protection_score(stats: Dict[str, Any], armor_resists: Dict[str, float]) ->
         # Calculate the need (how far from 100 is the stat)
         missing = max(0.0, 100.0 - base)
         # Multiplier (1.0 if full, up to 2.0 if empty)
-        importance = 1.0 + (missing / 100.0)
+        importance = 1.0 + (missing / 50.0)
 
         value = 0.0
         for k in art_keys:
@@ -186,10 +186,10 @@ def _score_artifact_for_build(artifact: Dict, armor_resists: Dict[str, float], b
     # Define the weights based on the build type selection
     if bt == "anomaly protections":
         score = (
-            2.0 * prot
-            + 0.5 * endur
-            + 0.5 * dura
-            + 0.5 * weight
+            2.5 * prot
+            + 0.25 * endur
+            + 0.25 * dura
+            + 0.25 * weight
             - 0.7 * rad_pen
         )
     elif bt == "endurance":
