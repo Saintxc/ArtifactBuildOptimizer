@@ -129,7 +129,7 @@ def _protection_score(stats: Dict[str, Any], armor_resists: Dict[str, float]) ->
         base = armor_resists.get(resist_type, 0.0)
         # Calculate the need (how far from 100 is the stat)
         missing = max(0.0, 100.0 - base)
-        # Multiplier (1.0 if full, up to 2.0 if empty)
+        # Multiplier (1.0 if full, up to 3.0 if empty)
         importance = 1.0 + (missing / 50.0)
 
         value = 0.0
@@ -262,7 +262,8 @@ def _choose_artifacts(armor: Dict, artifacts: List[Dict], slots: int, lead_slots
             ml_val = _ml_score_artifact_for_build(art, current_resists, build_type)
             if ml_val is not None:
                 # Use the ML score if available
-                scores["score"] = ml_val
+                base = scores["score"]
+                scores["score"] = 0.8 * base + 0.2 * ml_val
 
             scores["artifact"] = art
             scores["in_lead_container"] = False
