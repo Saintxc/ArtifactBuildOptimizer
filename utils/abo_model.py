@@ -258,10 +258,9 @@ def _choose_artifacts(armor: Dict, artifacts: List[Dict], slots: int, lead_slots
             # Get the heuristic score
             scores = _score_artifact_for_build(art, current_resists, build_type)
 
-            # Check if the ML model has a better selection
+            # Looks at ML selection versus heuristic selection, doesn't completely replace heuristic selection
             ml_val = _ml_score_artifact_for_build(art, current_resists, build_type)
             if ml_val is not None:
-                # Use the ML score if available
                 base = scores["score"]
                 scores["score"] = 0.8 * base + 0.2 * ml_val
 
